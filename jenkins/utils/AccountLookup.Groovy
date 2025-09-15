@@ -1,6 +1,6 @@
 awsEnvironments = [
     // dev account
-    [name: "dev",  accountId: "381305464391",  region: "ap-south-1",  env: "dev"]
+    [name: "dev",  doTokenCredentialId: "do-token",  clusterName: "myapp-dev-cluster",  env: "dev"]
 ]
 
 def getAccountDetails(String NAME) {

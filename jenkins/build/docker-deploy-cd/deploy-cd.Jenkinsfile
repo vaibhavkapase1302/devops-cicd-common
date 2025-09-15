@@ -7,8 +7,8 @@ pipeline {
         string(name: 'REPLICA_COUNT', defaultValue: '1', description: 'Number of replicas to deploy')
     }
     environment {
-        accountId = ''
-        region = ''
+        doTokenCredentialId = ''
+        clusterName = ''
         environment = ''
         namespace=''
         manifestBranch = 'main'
@@ -18,7 +18,7 @@ pipeline {
         DO_TOKEN = credentials('do-token') // DigitalOcean Personal Access Token from Jenkins secrets
         DO_REGISTRY = 'registry.digitalocean.com'  // Default registry url prefix
         DO_REGISTRY_NAME = 'flask-app-dev-registry'  // Your registry name from secrets
-        // ECR_REGION = 'ap-south-1'
+        // ECR_clusterName = 'ap-south-1'
         // container_registry_id = '381305464391'
         // container_registry_url = '381305464391.dkr.ecr.ap-south-1.amazonaws.com'
         IMAGE_TAG = "${params.RELEASE_VERSION}" // This assumes RELEASE_VERSION is defined as a string parameter in Jenkins.
@@ -52,15 +52,15 @@ pipeline {
                     }
 
                     // Set all the mapped values
-                    accountId = accountDetails.accountId
-                    region = accountDetails.region  
+                    doTokenCredentialId = accountDetails.doTokenCredentialId
+                    clusterName = accountDetails.clusterName  
                     environment = accountDetails.env
                     application_name = appinfoDetails.application_name
                     namespace = appinfoDetails.namespace
                     ecr_repo_name = appinfoDetails.ecr_repo_name
                     
                     
-                    println "accountId: ${accountId}, region: ${region}, environment: ${environment}, application_name: ${application_name}, namespace: ${namespace}, ecr_repo_name: ${ecr_repo_name}, IMAGE_TAG: ${IMAGE_TAG}, container_registry_id: ${container_registry_id}, CDmanifestBranch: ${manifestBranch}"
+                    println "doTokenCredentialId: ${doTokenCredentialId}, clusterName: ${clusterName}, environment: ${environment}, application_name: ${application_name}, namespace: ${namespace}, ecr_repo_name: ${ecr_repo_name}, IMAGE_TAG: ${IMAGE_TAG}, container_registry_id: ${container_registry_id}, CDmanifestBranch: ${manifestBranch}"
                 }
             }
         }
@@ -129,7 +129,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Integrate Jenkins with DO Kubernetes Cluster and Deploy App') {
             steps {
                 script {

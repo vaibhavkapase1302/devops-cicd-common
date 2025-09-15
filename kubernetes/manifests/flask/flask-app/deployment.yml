@@ -6,7 +6,7 @@ metadata:
   labels:
     app: flask-app
 spec:
-  replicas: 1
+  replicas: REPLICA_COUNT
   selector:
     matchLabels:
       app: flask-app
@@ -19,7 +19,7 @@ spec:
       - name: registry-flask-app-dev-registry
       containers:
       - name: flask-app
-        image: registry.digitalocean.com/flask-app-dev-registry/flask-app:v1.0.0-dev
+        image: registry.digitalocean.com/flask-app-dev-registry/flask-app:RELEASE_VERSION
         ports:
         - containerPort: 5000
         env:
