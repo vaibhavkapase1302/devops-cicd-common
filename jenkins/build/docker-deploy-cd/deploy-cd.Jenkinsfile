@@ -60,7 +60,7 @@ pipeline {
                     ecr_repo_name = appinfoDetails.ecr_repo_name
                     
                     
-                    println "doTokenCredentialId: ${doTokenCredentialId}, clusterName: ${clusterName}, environment: ${environment}, application_name: ${application_name}, namespace: ${namespace}, ecr_repo_name: ${ecr_repo_name}, IMAGE_TAG: ${IMAGE_TAG}, container_registry_id: ${container_registry_id}, CDmanifestBranch: ${manifestBranch}"
+                    println "doTokenCredentialId: ${doTokenCredentialId}, clusterName: ${clusterName}, environment: ${environment}, application_name: ${application_name}, namespace: ${namespace}, ecr_repo_name: ${ecr_repo_name}, IMAGE_TAG: ${IMAGE_TAG}, CDmanifestBranch: ${manifestBranch}"
                 }
             }
         }
