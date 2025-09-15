@@ -1,4 +1,3 @@
-
 def modules = [:]
 
 pipeline {
@@ -68,14 +67,20 @@ pipeline {
         stage('Check Image Tag in DO Registry') {
             steps {
                 script {
-                    def checkCmd = """
-                    doctl registry repository list-tags ${DO_REGISTRY_NAME}/${params.APP_NAME} --format Tag --no-header | grep -w ${IMAGE_TAG} || echo 'ERROR'
-                    """
-                    def imageExists = sh(script: checkCmd, returnStdout: true).trim()
-                    if(imageExists == 'ERROR' || imageExists == '') {
-                        error "Image tag ${IMAGE_TAG} does not exist in DigitalOcean registry."
-                    } else {
-                        echo "Image with tag ${IMAGE_TAG} found in DigitalOcean registry."
+                    withCredentials([string(credentialsId: 'do-token', variable: 'DO_TOKEN')]) {
+                        sh """
+                            doctl auth init -t ${DO_TOKEN}
+                            doctl registry repository list-tags ${DO_REGISTRY_NAME}/${params.APP_NAME} --format Tag --no-header | grep -w ${IMAGE_TAG} || echo 'ERROR'
+                        """
+                        def imageExists = sh(
+                            script: "doctl registry repository list-tags ${DO_REGISTRY_NAME}/${params.APP_NAME} --format Tag --no-header | grep -w ${IMAGE_TAG} || echo 'ERROR'",
+                            returnStdout: true
+                        ).trim()
+                        if(imageExists == 'ERROR' || imageExists == '') {
+                            error "Image tag ${IMAGE_TAG} does not exist in DigitalOcean registry."
+                        } else {
+                            echo "Image with tag ${IMAGE_TAG} found in DigitalOcean registry."
+                        }
                     }
                 }
             }
