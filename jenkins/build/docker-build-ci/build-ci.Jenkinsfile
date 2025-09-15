@@ -19,7 +19,7 @@ pipeline {
         // REGION = 'ap-south-1'
         // container_registry_url = '381305464391.dkr.ecr.ap-south-1.amazonaws.com'
         container_registry_url = 'registry.digitalocean.com/flask-app-dev-registry'
-        ecr_repo_name = 'flask-app'  // your app image name here
+        ecr_repo_name = 'flask-app'      // your image/repo name inside registry
     }
 
     stages {
@@ -149,7 +149,7 @@ pipeline {
                     withCredentials([string(credentialsId: 'registry-flask-app-dev-registry', variable: 'DO_REGISTRY_TOKEN')]) {
                         sh """
                             echo \$DO_REGISTRY_TOKEN | docker login registry.digitalocean.com --username vaibhavkapase132@gmail.com --password-stdin
-                            sh "docker push ${container_registry_url}/${ecr_repo_name}:${RELEASE_VERSION}"
+                            docker push ${container_registry_url}/${ecr_repo_name}:${RELEASE_VERSION}
                         """
                         // Remove the latest image if it exists
                         sh "docker rmi ${container_registry_url}/${ecr_repo_name}:latest || true"
