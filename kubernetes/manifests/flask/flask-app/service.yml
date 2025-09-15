@@ -1,16 +1,15 @@
+# Flask Application Service
 apiVersion: v1
 kind: Service
 metadata:
-  name: algo-test-api-service
+  name: flask-app-service
   labels:
-    app: algo-test-api
-    tier: backend
+    app: flask-app
 spec:
+  selector:
+    app: flask-app
+  ports:
+  - port: 80
+    targetPort: 5000
+    protocol: TCP
   type: ClusterIP
-  selector: 
-    app: algo-test-api
-  ports: 
-    - name: http
-      port: 3001
-      targetPort: main-port
-      protocol: TCP

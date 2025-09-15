@@ -14,9 +14,13 @@ pipeline {
         manifestBranch = 'main'
         ecr_repo_name=''
 
-        ECR_REGION = 'ap-south-1'
-        container_registry_id = '381305464391'
-        container_registry_url = '381305464391.dkr.ecr.ap-south-1.amazonaws.com'
+        // DigitalOcean related
+        DO_TOKEN = credentials('do-token') // DigitalOcean Personal Access Token from Jenkins secrets
+        DO_REGISTRY = 'registry.digitalocean.com'  // Default registry url prefix
+        DO_REGISTRY_NAME = 'flask-app-dev-registry'  // Your registry name from secrets
+        // ECR_REGION = 'ap-south-1'
+        // container_registry_id = '381305464391'
+        // container_registry_url = '381305464391.dkr.ecr.ap-south-1.amazonaws.com'
         IMAGE_TAG = "${params.RELEASE_VERSION}" // This assumes RELEASE_VERSION is defined as a string parameter in Jenkins.
         REPLICA_COUNT = "${params.REPLICA_COUNT}" // Using the REPLICA_COUNT parameter
     }
@@ -61,21 +65,17 @@ pipeline {
             }
         }
 
-        stage('Check Image Tag in ECR') {
+        stage('Check Image Tag in DO Registry') {
             steps {
                 script {
-                    withAWS(credentials: 'aws-dev', region: 'ap-south-1') {
-                        sh "aws ecr get-login-password --region ${ECR_REGION} | docker login --username AWS --password-stdin ${container_registry_url}"
-                            def cmd = """
-                                aws ecr describe-images --repository-name ${ecr_repo_name} --image-ids imageTag=${IMAGE_TAG} --registry-id ${container_registry_id} --region ${ECR_REGION} || echo 'ERROR'
-                            """
-                            def imageExists = sh(script: cmd, returnStdout: true).trim()
-                            
-                            if (!imageExists.contains('ERROR')) {
-                                echo "Image with tag ${IMAGE_TAG} exists in ECR. Proceeding with deployment."
-                            } else {
-                                error "Image with tag ${IMAGE_TAG} does not exist in ECR. Deployment aborted."
-                            }
+                    def checkCmd = """
+                    doctl registry repository list-tags ${DO_REGISTRY_NAME}/${params.APP_NAME} --format Tag --no-header | grep -w ${IMAGE_TAG} || echo 'ERROR'
+                    """
+                    def imageExists = sh(script: checkCmd, returnStdout: true).trim()
+                    if(imageExists == 'ERROR' || imageExists == '') {
+                        error "Image tag ${IMAGE_TAG} does not exist in DigitalOcean registry."
+                    } else {
+                        echo "Image with tag ${IMAGE_TAG} found in DigitalOcean registry."
                     }
                 }
             }
@@ -119,24 +119,8 @@ pipeline {
                                 echo "Deployment file not found for ${APP_NAME}"
                             }
 
-                            // Check if external-secret.yml exists for the application
-                            def secretFile = "${deploymentPath}/external-secret.yml"
-                            if (fileExists(secretFile)) {
-                                // Modify external-secret.yml with ENVIRONMENT
-                                sh "sed -i -e 's/ENVIRONMENT/${environment}/g' ${secretFile}"
-                                sh "cat ${secretFile}"
-                            } else {
-                                echo "External secret file not found for ${APP_NAME}"
-                            }
-
-                            // Check if service-account.yml exists for the backend
-                            def serviceAccountFile = "kubernetes/manifests/${namespace}/${APP_NAME}/service-account.yml"
-                            if (fileExists(serviceAccountFile)) {
-                                // Modify service-account.yml with AccountId
-                                sh "sed -i -e 's/ACCOUNT_ID/${accountId}/g' ${serviceAccountFile}"
-                            } else {
-                                echo "Service Account file not found for ${APP_NAME}"
-                            }
+                            def serviceFile = "${deploymentPath}/service.yml"
+                            sh "cat ${serviceFile}"
 
                     } catch (Exception e) {
                         // Catch any exceptions and handle them (e.g., print an error message)
@@ -145,28 +129,35 @@ pipeline {
                 }
             }
         }
-        stage('Integrate Jenkins with EKS Cluster and Deploy App') {
+        
+        stage('Integrate Jenkins with DO Kubernetes Cluster and Deploy App') {
             steps {
-                    script {
-                        try {         
-                            // Use resolved ACCOUNT_ID and REGION for deployment
-                            withAWS(credentials: 'aws-dev', region: 'ap-south-1') {
-                                // Modify Kubeconfig and apply manifests
-                                sh "aws eks --region ${region} update-kubeconfig --name myapp-${environment}-cluster"
-                                // Check if namespace exists and create if needed
-                                def namespaceExists = sh(script: "kubectl get namespace ${namespace}", returnStatus: true) == 0
-                                if (!namespaceExists) {
-                                    sh "kubectl create namespace ${namespace}"
-                                } else {
+                script {
+                    try {
+                        withCredentials([string(credentialsId: 'do-token', variable: 'DO_TOKEN')]) {
+                            sh """
+                                # Authenticate doctl with DigitalOcean token
+                                doctl auth init -t ${DO_TOKEN}
+
+                                # Download and save kubeconfig for your DO Kubernetes cluster
+                                doctl kubernetes cluster kubeconfig save myapp-${environment}-cluster
+
+                                # Check if namespace exists; create if not
+                                if ! kubectl get namespace ${namespace}; then
+                                    kubectl create namespace ${namespace}
+                                else
                                     echo "Namespace ${namespace} already exists. Skipping creation."
-                                }
-                                sh "kubectl apply -f kubernetes/manifests/${namespace}/${APP_NAME}/ --namespace=${namespace}"
-                            }
-                        } catch (Exception e) {
-                            // Handle any exceptions
-                            echo "An error occurred during deployment: ${e.message}"
-                            currentBuild.result = 'FAILURE'
+                                fi
+
+                                # Apply Kubernetes manifests to the target namespace
+                                kubectl apply -f kubernetes/manifests/${namespace}/${APP_NAME}/ --namespace=${namespace}
+                            """
                         }
+                    } catch (Exception e) {
+                        echo "An error occurred during deployment: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        error(e.message)
+                    }
                 }
             }
         }

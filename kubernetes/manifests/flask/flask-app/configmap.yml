@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: algo-test-api-config
-  namespace: algo-test
-data:
-  NODE_ENV: "production"
-  PORT: "3001"
-  CORS_ORIGIN: "https://algo-test.kubetux.com"
