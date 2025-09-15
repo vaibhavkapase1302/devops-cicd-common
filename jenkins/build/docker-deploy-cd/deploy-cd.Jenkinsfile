@@ -17,9 +17,6 @@ pipeline {
         DO_TOKEN = credentials('do-token') // DigitalOcean Personal Access Token from Jenkins secrets
         DO_REGISTRY = 'registry.digitalocean.com'  // Default registry url prefix
         DO_REGISTRY_NAME = 'flask-app-dev-registry'  // Your registry name from secrets
-        // ECR_clusterName = 'ap-south-1'
-        // container_registry_id = '381305464391'
-        // container_registry_url = '381305464391.dkr.ecr.ap-south-1.amazonaws.com'
         IMAGE_TAG = "${params.RELEASE_VERSION}" // This assumes RELEASE_VERSION is defined as a string parameter in Jenkins.
         REPLICA_COUNT = "${params.REPLICA_COUNT}" // Using the REPLICA_COUNT parameter
     }
@@ -60,28 +57,6 @@ pipeline {
                     
                     
                     println "doTokenCredentialId: ${doTokenCredentialId}, clusterName: ${clusterName}, environment: ${environment}, application_name: ${application_name}, namespace: ${namespace}, ecr_repo_name: ${ecr_repo_name}, IMAGE_TAG: ${IMAGE_TAG}, CDmanifestBranch: ${manifestBranch}"
-                }
-            }
-        }
-
-        stage('Check Image Tag in DO Registry') {
-            steps {
-                script {
-                    withCredentials([string(credentialsId: 'do-token', variable: 'DO_TOKEN')]) {
-                        sh """
-                            doctl auth init -t ${DO_TOKEN}
-                            doctl registry repository list-tags ${DO_REGISTRY_NAME}/${params.APP_NAME} --format Tag --no-header | grep -w ${IMAGE_TAG} || echo 'ERROR'
-                        """
-                        def imageExists = sh(
-                            script: "doctl registry repository list-tags ${DO_REGISTRY_NAME}/${params.APP_NAME} --format Tag --no-header | grep -w ${IMAGE_TAG} || echo 'ERROR'",
-                            returnStdout: true
-                        ).trim()
-                        if(imageExists == 'ERROR' || imageExists == '') {
-                            error "Image tag ${IMAGE_TAG} does not exist in DigitalOcean registry."
-                        } else {
-                            echo "Image with tag ${IMAGE_TAG} found in DigitalOcean registry."
-                        }
-                    }
                 }
             }
         }
@@ -145,7 +120,7 @@ pipeline {
                                 doctl auth init -t ${DO_TOKEN}
 
                                 # Download and save kubeconfig for your DO Kubernetes cluster
-                                doctl kubernetes cluster kubeconfig save myapp-${environment}-cluster
+                                doctl kubernetes cluster kubeconfig save flask-app-${environment}-cluster
 
                                 # Check if namespace exists; create if not
                                 if ! kubectl get namespace ${namespace}; then
