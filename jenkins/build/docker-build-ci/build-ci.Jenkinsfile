@@ -16,9 +16,9 @@ pipeline {
         APP_GIT_COMMIT = ''
         app_repo_url = ''
         ecr_repo_name = ''
-        REGION = 'ap-south-1'
-        container_registry_id = '381305464391'
-        container_registry_url = '381305464391.dkr.ecr.ap-south-1.amazonaws.com'
+        // REGION = 'ap-south-1'
+        // container_registry_url = '381305464391.dkr.ecr.ap-south-1.amazonaws.com'
+        container_registry_url = 'registry.digitalocean.com/flask-app-dev-registry'
     }
 
     stages {
@@ -122,11 +122,13 @@ pipeline {
                             ]]
                         ])
 
-                        // Use `withAWS` to authenticate with the correct credentials
-                        withAWS(credentials: 'aws-dev', region: 'ap-south-1') {
-                            // AWS CLI login to ECR
-                            sh "aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${container_registry_url}"
+                        // Login to DigitalOcean registry using Jenkins secret token
+                        withCredentials([string(credentialsId: 'do-registry-token', variable: 'DO_REGISTRY_TOKEN')]) {
+                            sh """
+                                echo \$DO_REGISTRY_TOKEN | docker login registry.digitalocean.com --username vaibhavkapase132@gmail.com --password-stdin
+                            """
                             
+                            // Build the Docker image with your DO registry URL
                             sh """
                                 docker buildx build -t ${container_registry_url}/${ecr_repo_name}:${RELEASE_VERSION} . \
                                 --build-arg BUILD_VERSION=${RELEASE_VERSION} \
@@ -143,17 +145,14 @@ pipeline {
             steps {
                 script {
                     // Use `withAWS` to authenticate with the correct credentials
-                    withAWS(credentials: 'aws-dev', region: 'ap-south-1') {
-                        // AWS CLI login to ECR
-                        sh "aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${container_registry_url}"
-                        sh "docker push ${container_registry_url}/${ecr_repo_name}:${RELEASE_VERSION}"
+                    withCredentials([string(credentialsId: 'do-registry-token', variable: 'DO_REGISTRY_TOKEN')]) {
+                        sh """
+                            echo \$DO_REGISTRY_TOKEN | docker login registry.digitalocean.com --username vaibhavkapase132@gmail.com --password-stdin
+                            docker push ${container_registry_url}/${ecr_repo_name}:${RELEASE_VERSION}
+                        """
                         // Remove the latest image if it exists
-                        try {
-                            sh "aws ecr batch-delete-image --region ${REGION} --repository-name ${ecr_repo_name} --registry-id ${container_registry_id} --image-ids imageTag=latest"
-                        } catch (Exception e) {
-                            echo "An error occurred during removing latest: ${e.message}"
-                        }
-                    }   
+                        sh "docker rmi ${container_registry_url}/${ecr_repo_name}:latest || true"
+                    }
                 }
             }
         }
