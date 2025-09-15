@@ -120,7 +120,7 @@ pipeline {
                                 doctl auth init -t ${DO_TOKEN}
 
                                 # Download and save kubeconfig for your DO Kubernetes cluster
-                                doctl kubernetes cluster kubeconfig save flask-app-${environment}-cluster
+                                doctl kubernetes cluster kubeconfig save ${APP_NAME}-${environment}-cluster
 
                                 # Check if namespace exists; create if not
                                 if ! kubectl get namespace ${namespace}; then
