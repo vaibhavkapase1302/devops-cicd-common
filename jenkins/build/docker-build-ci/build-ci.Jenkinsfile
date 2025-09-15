@@ -19,7 +19,7 @@ pipeline {
         // REGION = 'ap-south-1'
         // container_registry_url = '381305464391.dkr.ecr.ap-south-1.amazonaws.com'
         container_registry_url = 'registry.digitalocean.com/flask-app-dev-registry'
-        ecr_repo_name = 'flask-app'      // your image/repo name inside registry
+        ecr_repo_name = 'flask-app-dev-registry'      // your image/repo name inside registry
     }
 
     stages {
