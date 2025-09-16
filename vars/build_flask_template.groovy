@@ -7,21 +7,13 @@ def scmVars
     agent any
 
     environment {
-        // ACCOUNT_ID = "919758980891"
-        // REGION = "eu-west-2"
-        // APP_REPO_NAME = "https://github.com/facctum-core/facctum-infra-devops.git"
-        // DOCKER_IMAGE = "919758980891.dkr.ecr.eu-west-2.amazonaws.com/facctalert_frontend"
-        // APP_BRANCH_NAME = "vk_test_demo"
-        // Release_Version = "f_1"
-        // IMAGE_TAG = "latest"
         
         APP_GIT_COMMIT = ''
         app_repo_url = ''
-        // ecr_repo_name = ''
-        // REGION = 'ap-south-1'
-        // container_registry_url = '381305464391.dkr.ecr.ap-south-1.amazonaws.com'
-        container_registry_url = 'registry.digitalocean.com/flask-app-dev-registry'
-        ecr_repo_name = 'flask-app-dev-registry'      // your image/repo name inside registry
+        
+        container_registry_url = 'registry.digitalocean.com'
+        registry_name = 'flask-app-dev-registry'
+        repo_name = 'flask-app'      // image/repo name inside registry
     }
 
     stages {
@@ -111,7 +103,7 @@ def scmVars
                             
                             // Build the Docker image with your DO registry URL
                             sh """
-                                docker buildx build -t ${container_registry_url}/${ecr_repo_name}:${RELEASE_VERSION} . \
+                                docker buildx build -t ${container_registry_url}/${registry_name}/${repo_name}:${RELEASE_VERSION} . \
                                 --build-arg BUILD_VERSION=${RELEASE_VERSION} \
                                 --build-arg GIT_COMMIT=${scmVars.GIT_COMMIT[0..7]}
                             """
@@ -129,10 +121,10 @@ def scmVars
                     withCredentials([string(credentialsId: 'registry-flask-app-dev-registry', variable: 'DO_REGISTRY_TOKEN')]) {
                         sh """
                             echo \$DO_REGISTRY_TOKEN | docker login registry.digitalocean.com --username vaibhavkapase132@gmail.com --password-stdin
-                            docker push ${container_registry_url}/${ecr_repo_name}:${RELEASE_VERSION}
+                            docker push ${container_registry_url}/${registry_name}/${repo_name}:${RELEASE_VERSION}
                         """
                         // Remove the latest image if it exists
-                        sh "docker rmi ${container_registry_url}/${ecr_repo_name}:latest || true"
+                        sh "docker rmi ${container_registry_url}/${registry_name}/${repo_name}:latest || true"
                     }
                 }
             }
