@@ -1,5 +1,8 @@
 //
 def call() {
+
+def modules = [:]
+
 pipeline{
     agent any
     parameters {
