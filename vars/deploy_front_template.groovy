@@ -3,49 +3,121 @@ def call() {
 pipeline{
     agent any
     stages{
-        stage('workpace clean'){
-            steps{
-                cleanWs deleteDirs: true
-            }
+        stage('Setup') {
+            steps {
+                script {
+                    // Set the Build Display name
+                    currentBuild.displayName = "${RELEASE_VERSION}-${BUILD_ID}"
+                    
+                    // Load the utilities
+                    modules.AccountLookup = load "${WORKSPACE}/jenkins/utils/AccountLookup.Groovy"
+                    modules.ApplicationInfoLookup = load "${WORKSPACE}/jenkins/utils/ApplicationInfoLookup.Groovy"
+                    
+                    // Get all the mapped values for Application Info details
+                    def appinfoDetails = modules.ApplicationInfoLookup.getapplicationInfo(APP_NAME)
+                    if(!appinfoDetails) {
+                        println "ERROR!!! cannot find app details for ${APP_NAME}"
+                        error("cannot find app details for ${APP_NAME}")
+                    }
+    
 
+                    // Get all the mapped values for Account details
+                    def accountDetails = modules.AccountLookup.getAccountDetails(ACCOUNT_NAME)
+                    if (!accountDetails) {
+                        echo "ERROR!!! cannot find env details for ${ACCOUNT_NAME}"
+                        error "cannot find env details for ${ACCOUNT_NAME}"
+                    }
+
+                    // Set all the mapped values
+                    doTokenCredentialId = accountDetails.doTokenCredentialId
+                    clusterName = accountDetails.clusterName  
+                    environment = accountDetails.env
+                    application_name = appinfoDetails.application_name
+                    namespace = appinfoDetails.namespace
+                    ecr_repo_name = appinfoDetails.ecr_repo_name
+                    
+                    
+                    println "doTokenCredentialId: ${doTokenCredentialId}, clusterName: ${clusterName}, environment: ${environment}, application_name: ${application_name}, namespace: ${namespace}, ecr_repo_name: ${ecr_repo_name}, IMAGE_TAG: ${IMAGE_TAG}, CDmanifestBranch: ${manifestBranch}"
+                }
+            }
         }
 
         stage('checkout TO manifest code') {
-            steps{
-                dir("manifest-code") {
-                git branch: '$MANIFEST_BRANCH_NAME', credentialsId: 'facctum_github_access', url: '$MANIFEST_REPO_NAME'
+            when {
+                expression {
+                    // Only run this stage if the previous stage succeeded
+                    currentBuild.result == null || currentBuild.result == 'SUCCESS'
                 }
             }
-        }
-         
-         
-        stage('Applying env and Version'){
-            steps{
-                dir("manifest-code") {
-                    sh 'sed -i -e "s/Release_Version/${Release_Version}/g" ${Deployment_Path}/frontend_deployment.yml'
-                }
-            }
-        }
-        
-        stage('Integrate Jenkins with EKS Cluster and Deploy App'){
             steps {
-                dir("manifest-code"){
-                    script{
-                        ACCOUNT_ID = variable.getAccount(ENVIRONMENT)
-                        REGION = variable.getRegion()
-                    } 
-                    withAWS(roleAccount: "${ACCOUNT_ID}", role: "terraform_role") {
-                        script {
-                            sh "aws eks --region ${REGION} update-kubeconfig --name ${tenant}-${ENVIRONMENT}-eks-cluster"
-                            def namespaceExists = sh(script: "kubectl get namespace ${NameSpace}", returnStatus: true) == 0
-                            if (!namespaceExists) {
-                                // Namespace doesn't exist, so create it
-                                sh "kubectl create namespace ${NameSpace}"
+                checkout([
+                    $class: 'GitSCM', 
+                    branches: [[name: manifestBranch]], 
+                    doGenerateSubmoduleConfigurations: false, 
+                    extensions: [[$class: 'CleanCheckout']], 
+                    submoduleCfg: [], 
+                    userRemoteConfigs: [[credentialsId: 'vk-github-creds', url: 'https://github.com/vaibhavkapase1302/devops-cicd-common.git']]
+                ])
+            }
+        }
+    
+        // Image Building
+        stage('Applying env and Version') {
+            steps {
+                script {
+                    try {
+                        def deploymentPath = "kubernetes/manifests/${namespace}/${APP_NAME}"
+
+                            // For applications
+                            def deploymentFile = "${deploymentPath}/deployment.yml"
+                            if (fileExists(deploymentFile)) {
+                                // Modify deployment.yml with RELEASE_VERSION
+                                println "Applying RELEASE_VERSION: ${RELEASE_VERSION} to deployment.yml"
+                                sh "sed -i -e 's/RELEASE_VERSION/${RELEASE_VERSION}/g' ${deploymentFile}"
+                                sh "sed -i -e 's/REPLICA_COUNT/${REPLICA_COUNT}/g' ${deploymentFile}"
+                                sh "cat ${deploymentFile}"
                             } else {
-                                echo "Namespace ${NameSpace} already exists. Skipping creation."
+                                echo "Deployment file not found for ${APP_NAME}"
                             }
-                            sh "kubectl apply -f ${Deployment_Path}/ --namespace=${NameSpace}"
+
+                            def serviceFile = "${deploymentPath}/service.yml"
+                            sh "cat ${serviceFile}"
+
+                    } catch (Exception e) {
+                        // Catch any exceptions and handle them (e.g., print an error message)
+                        echo "An error occurred: ${e.message}"
+                    }
+                }
+            }
+        }
+
+        stage('Integrate Jenkins with DO Kubernetes Cluster and Deploy App') {
+            steps {
+                script {
+                    try {
+                        withCredentials([string(credentialsId: 'do-token', variable: 'DO_TOKEN')]) {
+                            sh """
+                                # Authenticate doctl with DigitalOcean token
+                                doctl auth init -t ${DO_TOKEN}
+
+                                # Download and save kubeconfig for your DO Kubernetes cluster
+                                doctl kubernetes cluster kubeconfig save ${APP_NAME}-${environment}-cluster
+
+                                # Check if namespace exists; create if not
+                                if ! kubectl get namespace ${namespace}; then
+                                    kubectl create namespace ${namespace}
+                                else
+                                    echo "Namespace ${namespace} already exists. Skipping creation."
+                                fi
+
+                                # Apply Kubernetes manifests to the target namespace
+                                kubectl apply -f kubernetes/manifests/${namespace}/${APP_NAME}/ --namespace=${namespace}
+                            """
                         }
+                    } catch (Exception e) {
+                        echo "An error occurred during deployment: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        error(e.message)
                     }
                 }
             }
