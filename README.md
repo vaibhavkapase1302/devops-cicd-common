@@ -1,225 +1,203 @@
-## DevOps CI/CD Common
+# DevOps CI/CD Common assets repo:
 
-This repository provides reusable CI/CD assets for containerized applications and infrastructure:
-- **Jenkins pipelines** for build, deploy, and Terraform workflows
-- **Jenkins Shared Library** templates and helpers
-- **Kubernetes manifests** for a sample Flask application
+This repository provides reusable CI/CD assets, Jenkins shared libraries, generic jenkins CI/CD pipelines and Kubernetes manifests templates to standardize and accelerate delivery pipelines for containerized applications and infrastructure.
 
-Use this repo as a central source of truth to standardize delivery pipelines across projects.
+---
 
-### What’s Included
+## Features
 
-- End-to-end CI (build and push container images)
-- CD to Kubernetes (deploy containerized apps)
-- Terraform workflows (plan/apply for infrastructure)
-- Jenkins Shared Library steps for reuse across projects
+- **Jenkins Pipelines:** Prebuilt Jenkinsfiles for CI (build), CD (deploy), and Terraform workflows.
+- **Jenkins Shared Library:** Reusable Groovy steps for building and deploying Flask apps.
+- **Kubernetes Manifests:** Sample manifests for deploying a Flask application.
+- **Terraform Pipelines:** Jenkinsfile for infrastructure provisioning and management terraform init to apply.
+- **Utilities:** Centralized Groovy lookup files for centralized account and application details.
 
-### Repository Structure
+---
+
+## Repository Structure
 
 ```
-jenkins/
-  build/
-    docker-build-ci/
-      build-ci.Jenkinsfile        # CI: Build and push container images
-    docker-deploy-cd/
-      deploy-cd.Jenkinsfile       # CD: Deploy an image to environments
-  terraform/
-    infra-plan.Jenkinsfile        # Terraform plan
-    infra-deploy.Jenkinsfile      # Terraform apply/deploy
-  utils/
-    AccountLookup.Groovy          # Utility: resolve account/env/credentials
-    ApplicationInfoLookup.Groovy  # Utility: resolve app-specific metadata
-
-kubernetes/
-  manifests/
-    flask/
-      flask-app/
-        deployment.yml            # K8s Deployment for Flask app
-        service.yml               # K8s Service for Flask app
-
-shared-lib/
-  application/
-    flask-app/
-      build-flask-app.jenkinsfile   # Library pipeline for building Flask app
-      deploy-flask-app.jenkinsfile  # Library pipeline for deploying Flask app
-
-vars/
-  build_flask_template.groovy     # Shared Library step for building Flask app
-  deploy_flask_template.groovy    # Shared Library step for deploying Flask app
+devops-cicd-common/
+│
+├── jenkins/
+│   ├── build/
+│   │   └── docker-build-ci/
+│   ├── terraform/
+│   │   ├── infra-plan.Jenkinsfile
+│   │   └── infra-deploy.Jenkinsfile
+│   └── utils/
+│       ├── AccountLookup.Groovy
+│       └── ApplicationInfoLookup.Groovy
+│
+├── kubernetes/
+│   └── manifests/
+│       └── flask/
+│           ├── deployment.yml
+│           └── service.yml
+│
+├── shared-lib/
+│   └── application/
+│       └── flask-app/
+│
+└── vars/
+    ├── build_flask_template.groovy
+    └── deploy_flask_template.groovy
 ```
 
-### Jenkins Requirements
+## Jenkins Access
 
-- Jenkins with Pipeline (Declarative) and Shared Library support
-- Credentials configured for:
-  - **Git** read access to this repository
-  - **Container registry** (e.g., Docker Hub, ECR, GCR)
-  - **Kubernetes** access (kubeconfig or in-cluster)
-  - **Terraform** backend/provider authentication
-- Recommended plugins: Pipeline, Git, Credentials Binding, Kubernetes, Docker, Terraform (as applicable)
+- **Jenkins URL:** [https://jenkins.kubetux.com](https://jenkins.kubetux.com)
+- **Note:** For username and password, please contact your Jenkins administrator.
 
-### Using the Jenkinsfiles (Direct)
+## Jenkins Practical Overview
 
-You can reference the provided Jenkinsfiles directly in a multibranch or pipeline job.
+Your Jenkins instance is organized into folders for different pipeline types:
 
-Example: Build image CI using `jenkins/build/docker-build-ci/build-ci.Jenkinsfile`:
+- **ApplicationCICD:** Application build and deployment pipelines.
+- **ApplicationCICD Shared-Lib:** Shared library jobs for reusable pipeline steps.
+- **Infra:** Infrastructure provisioning and management (e.g., Terraform).
+- **Testing:** Dedicated pipelines for running tests.
+
+**Jenkins Dashboard Example:**
+
+```
+┌─────────────────────────────┐
+│         Jenkins            │
+│  https://jenkins.kubetux.com│
+└─────────────┬───────────────┘
+              │
+      ┌───────┴────────┬─────────────┬─────────────┐
+      │                │             │             │
+      ▼                ▼             ▼             ▼
+┌────────────┐  ┌────────────────┐ ┌────────────┐ ┌────────────┐
+│Application │  │ApplicationCICD │ │   Infra    │ │  Testing   │
+│   CICD     │  │ Shared-Lib     │ │   TODO     │ │            │
+└────────────┘  └────────────────┘ └────────────┘ └────────────┘
+```
+
+---
+
+## Prerequisites
+
+- **Jenkins** with Pipeline and Shared Library support
+- **Docker**-capable Jenkins agents
+- **Kubernetes** cluster access (kubeconfig or in-cluster)
+- **Terraform** installed on Jenkins agents
+- **Credentials** in Jenkins for:
+  - Git read access
+  - Container registry (Docker Hub, ECR, GCR, etc.)
+  - Kubernetes access
+  - Terraform backend/provider
+
+---
+
+## Setup
+
+### 1. Configure as a Jenkins Global Pipeline Library
+
+1. Go to **Manage Jenkins → System → Global Pipeline Libraries**.
+2. Add a new library:
+   - **Name:** `flask-application-library`
+   - **Default version:** (e.g., `main`)
+   - **Retrieval method:** Modern SCM → Git
+   - **Repository URL:** (URL of this repo)
+
+### 2. Add Required Credentials
+
+- **Git:** For private repos, add a Git read token. e.g. vk-github-creds
+- **Container Registry:** Credentials for Docker Hub, ECR, GCR, etc. e.g. registry-flask-app-dev-registry
+- **Kubernetes:** Kubeconfig or in-cluster credentials. e.g. do-token
+- **Terraform:** Backend/provider credentials. e.g. AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY for DO similarr to AWS.
+
+### 3. Reference Jenkinsfile
+
+Use the provided Jenkinsfiles for opinionated CI/CD and Terraform workflows.
+
+---
+
+## Usage
+
+### 1. Using Shared Library Steps in Jenkinsfile
+
+To use the shared library for a Flask app, add the following at the top of your Jenkinsfile:
 
 ```groovy
-@Library('devops-cicd-common') _
+@Library('flask-application-library')_
+```
 
-pipeline {
-  agent any
-  stages {
-    stage('Build & Push') {
-      steps {
-        // Example parameters
-        build_flask_template(
-          appName: 'flask-app',
-          dockerContext: '.',
-          dockerfile: 'Dockerfile',
-          imageRegistry: 'registry.example.com',
-          imageRepo: 'team/flask-app',
-          imageTag: env.BRANCH_NAME
-        )
-      }
-    }
-  }
+#### CI Example
+
+```groovy
+@Library('flask-application-library')_
+
+stage('applicationCICD') {
+    build_flask_template()
 }
 ```
 
-For CD using `jenkins/build/docker-deploy-cd/deploy-cd.Jenkinsfile`, leverage `deploy_flask_template` with environment-specific parameters (namespace, replicas, image tag, etc.).
-
-### Usage: Shared Library Steps
-
-- `build_flask_template` builds and pushes a Docker image for a Flask app.
-- `deploy_flask_template` deploys the image to a Kubernetes namespace with the desired replica count.
-
-Common parameters:
-- build: `appName`, `dockerContext`, `dockerfile`, `imageRegistry`, `imageRepo`, `imageTag`
-- deploy: `appName`, `namespace`, `replicas`, `image`, `imageTag`
-
-### Jenkins Shared Library Usage
-
-Declare this repo as a Global Pipeline Library in Jenkins:
-- Manage Jenkins → System → Global Pipeline Libraries
-- Name: `devops-cicd-common`
-- Default version: a branch or tag (e.g., `main`)
-- Retrieval: Modern SCM → Git → Repository URL of this repo
-
-Then, in your application pipelines, load and use the templates:
+#### CD Example
 
 ```groovy
-@Library('devops-cicd-common') _
+@Library('flask-application-library')_
 
-pipeline {
-  agent any
-  stages {
-    stage('Build') {
-      steps {
-        build_flask_template(
-          appName: 'flask-app',
-          dockerContext: '.',
-          dockerfile: 'Dockerfile',
-          imageRegistry: 'registry.example.com',
-          imageRepo: 'team/flask-app',
-          imageTag: env.GIT_COMMIT.take(7)
-        )
-      }
-    }
-    stage('Deploy') {
-      steps {
-        deploy_flask_template(
-          appName: 'flask-app',
-          namespace: 'staging',
-          replicas: 2,
-          image: 'registry.example.com/team/flask-app',
-          imageTag: env.GIT_COMMIT.take(7)
-        )
-      }
-    }
-  }
+stage('applicationCICD') {
+    deploy_flask_template()
 }
 ```
 
-Parameters supported by the templates typically include:
-- **build_flask_template**: `appName`, `dockerContext`, `dockerfile`, `imageRegistry`, `imageRepo`, `imageTag`
-- **deploy_flask_template**: `appName`, `namespace`, `replicas`, `image`, `imageTag`, optional `values` or overlays
+**Parameters:**
 
-Refer to `vars/build_flask_template.groovy` and `vars/deploy_flask_template.groovy` for authoritative parameters.
+- **build_flask_template:** `APP_NAME`, `RELEASE_VERSION`, `APP_BRANCH_NAME`
+- **deploy_flask_template:** `APP_NAME`, `REPLICA_COUNT`, `ACCOUNT_NAME`, `RELEASE_VERSION`
 
-### Kubernetes Manifests
+See [`vars/build_flask_template.groovy`](vars/build_flask_template.groovy) and [`vars/deploy_flask_template.groovy`](vars/deploy_flask_template.groovy) for details.
 
-The sample Flask app manifests are located under `kubernetes/manifests/flask/flask-app/`.
-- `deployment.yml`: Deployment with container image reference and pod spec
-- `service.yml`: Service exposing the Flask app within the cluster
+---
 
-You can kubectl apply them directly or integrate into your CD pipeline via `deploy_flask_template`.
+### 2. Using Provided Jenkinsfiles
 
-### Terraform Pipelines
+- **CI:** `jenkins/build/docker-build-ci/build-ci.Jenkinsfile`
+- **CD:** `jenkins/build/docker-deploy-cd/deploy-cd.Jenkinsfile`
+- **Terraform Plan:** `jenkins/terraform/infra-plan.Jenkinsfile`
+- **Terraform Deploy:** `jenkins/terraform/infra-deploy.Jenkinsfile`
 
-Jenkinsfiles under `jenkins/terraform/` provide standard plan/apply workflows:
-- `infra-plan.Jenkinsfile`: Executes `terraform init` + `terraform plan`
-- `infra-deploy.Jenkinsfile`: Executes `terraform apply` with appropriate approvals/guards
+For shared lib: 
 
-Provide the necessary backend configuration and provider credentials via Jenkins credentials and environment variables. Keep state backends (e.g., S3 + DynamoDB, GCS) secured and locked across pipelines.
+**CI**
 
-### Utilities
+`shared-lib/application/flask-app/build-flask-app.jenkinsfile`
 
-The `jenkins/utils/` Groovy utilities can be imported in shared library steps or Jenkinsfiles to resolve application and account metadata consistently across pipelines.
+**CD**
 
-### Quick Start
+`shared-lib/application/flask-app/deploy-flask-app.jenkinsfile`
 
-1) Configure this repo as a Global Library in Jenkins (`devops-cicd-common`).
-2) Create an app pipeline that imports the library and calls `build_flask_template` and `deploy_flask_template`.
-3) Ensure required credentials exist in Jenkins and your agents can access Docker/Kubernetes/Terraform.
-4) Optionally, reference provided Jenkinsfiles under `jenkins/` directly for opinionated defaults.
+Reference these Jenkinsfiles in your pipeline jobs as needed.
 
-### Prerequisites
+---
 
-- Jenkins server with Pipeline support and access to this repository
-- Docker-capable agents and access to a container registry
-- Kubernetes cluster access (kubeconfig or in-cluster)
-- Terraform installed on agents and provider/backend credentials
+### 3. Kubernetes Manifests
 
-### Setup
+Sample manifests for a Flask app are in `kubernetes/manifests/flask/`:
 
-1) Configure this repository as a Global Pipeline Library in Jenkins:
-   - Manage Jenkins → System → Global Pipeline Libraries
-   - Name: `devops-cicd-common`
-   - Default version: `main` (or a tag)
-   - SCM: Git → set repository URL
-2) Ensure credentials exist in Jenkins for:
-   - Git read access
-   - Container registry push/pull
-   - Kubernetes context (if needed)
-   - Terraform backend/provider
+- `deployment.yml`: Deployment spec
+- `service.yml`: Service spec
 
-### Jenkins Access
+Apply directly with `kubectl` or via your CD pipeline.
 
-- URL: `https://jenkins.kubetux.com/`
-- Credentials: obtain username and password from the Jenkins admin. Do not store credentials in this repository or README.
+---
 
-Steps:
-1) Navigate to `https://jenkins.kubetux.com/` and log in.
-2) Configure Global Library (Manage Jenkins → System → Global Pipeline Libraries):
-   - Name: `devops-cicd-common`
-   - Default version: `main`
-   - Retrieval method: Modern SCM → Git → set this repo URL
-3) Add required credentials (Manage Jenkins → Credentials):
-   - Git read token (if private)
-   - Container registry credentials
-   - Kubernetes kubeconfig or service account (if needed)
-   - Terraform backend/provider credentials
-4) Create a Pipeline or Multibranch Pipeline job for your application repository.
-5) Use the examples in this README to call `build_flask_template` and `deploy_flask_template`.
+### 4. Utilities
 
-### Contributing
+Import and use Groovy utilities from `jenkins/utils/` in your shared library steps or Jenkinsfiles for centralized account and application details.
 
-Contributions are welcome. Please open an issue describing the change, then submit a PR with:
-- Clear description and motivation
-- Updated examples and documentation
-- Backwards compatibility where possible
+---
 
-### License
+## Quick Start
 
-Add your preferred license here (e.g., Apache-2.0 or MIT) and include the license file at the repo root.
+1. Access Jenkins at [https://jenkins.kubetux.com](https://jenkins.kubetux.com) (get credentials from admin).
+2. Configure this repo as a Global Library in Jenkins.
+3. Create a pipeline that imports the library and calls `build_flask_template` and `deploy_flask_template`.
+4. Ensure all required credentials are set up in Jenkins.
+5. Optionally, use the provided Jenkinsfiles for standard workflows.
+
+---
