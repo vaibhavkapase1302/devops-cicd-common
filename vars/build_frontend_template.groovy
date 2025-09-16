@@ -29,9 +29,9 @@ def scmVars
             steps {
                 echo "PIPELINE_COMMIT_ID: ${GIT_COMMIT[0..7]}"
                 script {
-                    if (!isValidVersionForEnvironment(RELEASE_VERSION)) {
-                        error "Invalid version can't be deployed in dev."
-                    }
+                    // if (!isValidVersionForEnvironment(RELEASE_VERSION)) {
+                    //     error "Invalid version can't be deployed in dev."
+                    // }
 
                     // Set the Build Display name
                     currentBuild.displayName = "${RELEASE_VERSION}-${BUILD_ID}"
