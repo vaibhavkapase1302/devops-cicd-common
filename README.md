@@ -47,7 +47,9 @@ devops-cicd-common/
 ## Jenkins Access
 
 - **Jenkins URL:** [https://jenkins.kubetux.com](https://jenkins.kubetux.com)
-- **Note:** For username and password, please contact your Jenkins administrator.
+- **Note:** For username and password, please contact your admin.
+
+<img width="3382" height="840" alt="image" src="https://github.com/user-attachments/assets/ba73d00f-e8e9-492a-b3b0-cec76e417895" />
 
 ## Jenkins Practical Overview
 
@@ -55,7 +57,7 @@ Your Jenkins instance is organized into folders for different pipeline types:
 
 - **ApplicationCICD:** Application build and deployment pipelines.
 - **ApplicationCICD Shared-Lib:** Shared library jobs for reusable pipeline steps.
-- **Infra:** Infrastructure provisioning and management (e.g., Terraform).
+- **Infra:** Infrastructure provisioning and management (e.g., Terraform like tf plan, apply).
 - **Testing:** Dedicated pipelines for running tests.
 
 **Jenkins Dashboard Example:**
