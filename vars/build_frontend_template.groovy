@@ -1,14 +1,5 @@
 def call() {
 
-def isValidVersionForEnvironment(version) {
-    // Allow only [vX.Y.Z-dev] example- v1.0.1-dev format in dev environment
-    if (version =~ /^v\d+\.\d+\.\d+-dev$/) {
-        return true
-    } else {
-        return false
-    }
-}
-
 def modules = [:]
 def scmVars
 
