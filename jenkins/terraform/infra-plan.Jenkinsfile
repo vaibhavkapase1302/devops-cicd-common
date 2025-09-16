@@ -1,9 +1,4 @@
-//Pipeline for deploying terraform.
-// The following parameters should be defined in the pipeline:
-// 1. ACCOUNT_NAME - String
-// 2. TF_SCRIPT_REPO - String
-// 3. CONFIG_BRANCH_NAME - String
-// 4. SCRIPT_BRANCH_NAME - String
+//Pipeline for plan terraform.
 
 def modules = [:]
 
@@ -51,11 +46,9 @@ pipeline {
         stage('TF Plan') {
             steps {
                 dir('tf-scripts') {
-                    withAWS(credentials: 'aws-dev', region: 'ap-south-1') {
+                    withCredentials([string(credentialsId: 'do-token', variable: 'DO_TOKEN')]) {
                         sh '''
-                            terraform init -reconfigure \
-                                -backend-config="key=dev/terraform.tfstate" \
-                                -backend-config="region=ap-south-1"
+                            terraform init -reconfigure
 
                             terraform plan -var-file=envs/dev/infra.tfvars
                         '''
