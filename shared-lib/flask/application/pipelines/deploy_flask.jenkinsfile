@@ -1,5 +1,5 @@
 @Library('flask-application-library')_
 
  stage('applicationCICD') {
-     deploy_front_template()
+     deploy_flask_template()
  }
