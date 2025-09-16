@@ -47,7 +47,7 @@ devops-cicd-common/
 ## Jenkins Access
 
 - **Jenkins URL:** [https://jenkins.kubetux.com](https://jenkins.kubetux.com)
-- **Note:** For username and password, please contact your admin.
+- **Note:** For username and password, please contact admin.
 
 <img width="3382" height="840" alt="image" src="https://github.com/user-attachments/assets/ba73d00f-e8e9-492a-b3b0-cec76e417895" />
 
