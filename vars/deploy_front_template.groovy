@@ -2,6 +2,25 @@
 def call() {
 pipeline{
     agent any
+    parameters {
+        string(name: 'REPLICA_COUNT', defaultValue: '1', description: 'Number of replicas to deploy')
+    }
+    environment {
+        doTokenCredentialId = ''
+        clusterName = ''
+        environment = ''
+        namespace=''
+        manifestBranch = 'main'
+        ecr_repo_name=''
+
+        // DigitalOcean related
+        DO_TOKEN = credentials('do-token') // DigitalOcean Personal Access Token from Jenkins secrets
+        DO_REGISTRY = 'registry.digitalocean.com'  // Default registry url prefix
+        DO_REGISTRY_NAME = 'flask-app-dev-registry'  // Your registry name from secrets
+        IMAGE_TAG = "${params.RELEASE_VERSION}" // This assumes RELEASE_VERSION is defined as a string parameter in Jenkins.
+        REPLICA_COUNT = "${params.REPLICA_COUNT}" // Using the REPLICA_COUNT parameter
+    }
+
     stages{
         stage('Setup') {
             steps {
