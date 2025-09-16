@@ -1,5 +1,4 @@
 @Library('flask-application-library')_
-// @Library('variable') l1
 
  stage('applicationCICD') {
      deploy_front_template()
