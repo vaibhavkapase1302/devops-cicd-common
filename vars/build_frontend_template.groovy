@@ -85,28 +85,6 @@ def scmVars
             }
         }
 
-        stage('Check Tag Version') {
-            when {
-                expression { params.TAG_SOURCE != 'false' }
-            }
-            steps {
-                dir("app-code") {
-                    script {
-                        // Use the credentials directly in the Git operations
-                        sh(returnStdout: true, script: """#!/bin/bash
-                            if [ \$(git tag -l ${RELEASE_VERSION}) ]; then
-                                echo "tag already exists"
-                                exit 1
-                            else
-                                echo "this is new tag"
-                                exit 0
-                            fi
-                        """)
-                    }
-                }
-            }
-        }
-
         stage('Building Image') {
             agent any
             steps {
@@ -155,26 +133,6 @@ def scmVars
                         """
                         // Remove the latest image if it exists
                         sh "docker rmi ${container_registry_url}/${ecr_repo_name}:latest || true"
-                    }
-                }
-            }
-        }
-
-        stage('Tag Source') {
-            when {
-                expression { params.TAG_SOURCE != 'false' }
-            }
-            steps {
-                dir("app-code") {
-                    script {
-                        // Use the 'vk-github-creds' credentials for Git operations
-                        withCredentials([gitUsernamePassword(credentialsId: 'vk-github-creds',
-                            gitToolName: 'git-tool')]) {
-                            sh """  
-                                git tag -a ${RELEASE_VERSION} ${APP_GIT_COMMIT} -m "Version ${RELEASE_VERSION}"
-                                git push origin tag ${RELEASE_VERSION}
-                            """
-                        }
                     }
                 }
             }
