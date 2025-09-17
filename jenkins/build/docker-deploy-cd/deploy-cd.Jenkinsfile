@@ -142,4 +142,20 @@ pipeline {
             }
         }
     }
+
+    post {
+        success {
+            mail to: 'bose@mitaoe.ac.in',
+                 subject: "SUCCESS: Job '${env.JOB_NAME} #${env.BUILD_NUMBER}'",
+                 body: """Good news! The deploy succeeded: ${env.BUILD_URL}"""
+        }
+        failure {
+            mail to: 'bose@mitaoe.ac.in',
+                 subject: "FAILURE: Job '${env.JOB_NAME} #${env.BUILD_NUMBER}'",
+                 body: """The deploy failed: ${env.BUILD_URL}"""
+        }
+        always {
+            cleanWs()
+        }
+    }
 }
