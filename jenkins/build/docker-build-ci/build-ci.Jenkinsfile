@@ -140,6 +140,28 @@ pipeline {
             }
         }
 
+        stage('Scan Image for Vulnerabilities') {
+            agent any
+            steps {
+                script {
+                    echo "🔍 Running vulnerability scan with Trivy..."
+                    def imageFullName = "${container_registry_url}/${registry_name}/${repo_name}:${RELEASE_VERSION}"
+                    def scanStatus = sh (
+                        script: "trivy image --severity CRITICAL --exit-code 1 ${imageFullName}",
+                        returnStatus: true
+                    )
+                    if (scanStatus != 0) {
+                        error """
+                            ❌ Vulnerabilities detected in image '${imageFullName}'.
+                            Aborting pipeline to prevent deployment of a vulnerable image.
+                            ➡️ Please fix the vulnerabilities and try again.
+                        """
+                    }
+                    echo "✅ No critical vulnerabilities found. Proceeding to push the image."
+                }
+            }
+        }
+
         stage('Build Manifest and Push') {
             agent any
             steps {
