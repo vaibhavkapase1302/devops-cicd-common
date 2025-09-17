@@ -104,6 +104,35 @@ pipeline {
             }
         }
 
+        stage('SonarQube Analysis') {
+            environment {
+                scannerHome = tool 'sonar'
+            }
+            steps {
+                dir("app-code") {
+                    withSonarQubeEnv('sonar') {
+                        sh "${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=${APP_NAME} \
+                            -Dsonar.sources=. \
+                            -Dsonar.exclusions=tests/**/* \
+                            -Dsonar.java.binaries=. \
+                            -Dsonar.sourceEncoding=UTF-8" \
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                dir("app-code") {
+                    timeout(time: 10, unit: 'MINUTES') {
+                        sleep 60
+                        waitForQualityGate abortPipeline: true
+                    }
+                }
+            }
+        }
+
         stage('Building Image') {
             agent any
             steps {
