@@ -194,14 +194,14 @@ Import and use Groovy utilities from `jenkins/utils/` in your shared library ste
 
 ---
 
-## 5. Email Notifications
+### 5. Email Notifications
 
 The CI/CD pipelines are configured to send email notifications automatically when a job completes:
 
 * **On Success:** Team members receive a notification indicating the job succeeded, along with the build/deployment URL and version details.
 * **On Failure:** Team members are alerted immediately about the failure to enable quick investigation.
 
-### How to Configure
+#### How to Configure
 
 * Emails are sent via Jenkins' built-in mail step in the pipeline post conditions (`success`, `failure`).
 * Update the recipient email addresses directly in the pipeline Jenkinsfiles or shared library scripts.
