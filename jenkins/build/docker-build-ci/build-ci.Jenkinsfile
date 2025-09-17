@@ -172,8 +172,6 @@ pipeline {
                             echo \$DO_REGISTRY_TOKEN | docker login registry.digitalocean.com --username vaibhavkapase132@gmail.com --password-stdin
                             docker push ${container_registry_url}/${registry_name}/${repo_name}:${RELEASE_VERSION}
                         """
-                        // Remove the latest image if it exists
-                        sh "docker rmi ${container_registry_url}/${registry_name}/${repo_name}:latest || true"
                     }
                 }
             }
